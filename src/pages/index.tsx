@@ -6,14 +6,25 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
 import { Loading } from "~/components/loading";
+import { useState } from "react";
 
 dayjs.extend(relativeTime);
 
 const CreatePostWizard = () => {
+  const [input, setInput] = useState("");
+
   const { user } = useUser()
 
+  const ctx = api.useContext()
+
+  const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
+    onSuccess: () => {
+      setInput("")
+      void ctx.posts.getAll.invalidate()
+    }
+  });
+
   if (!user) return null
-  console.log(user.id)
 
   return (
     <div className="flex gap-3 w-full">
@@ -24,7 +35,16 @@ const CreatePostWizard = () => {
         width={48}
         height={48}
       />
-      <input placeholder="Type some emojis!" className="bg-transparent grow outline-none" />
+      <input
+        placeholder="Type some emojis!"
+        className="bg-transparent grow outline-none"
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        disabled={isPosting}
+      />
+      <button onClick={() => mutate({ content: input })}>
+        Post
+      </button>
     </div>
   )
 
@@ -75,7 +95,7 @@ const Feed = () => {
     <div className="w-full h-full flex justify-center">
       <div className="w-full flex flex-col">
         {
-          data?.map((post) => (
+          data.map((post) => (
             <PostView {...post} key={post.post.id} />
           ))
         }
