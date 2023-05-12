@@ -5,25 +5,58 @@ import { type RouterOutputs, api } from "~/utils/api";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
-import { Loading } from "~/components/loading";
-import { useState } from "react";
+import { Loading, LoadingSpinner } from "~/components/loading";
+import { toast } from "react-hot-toast";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useEffect } from "react";
 
 dayjs.extend(relativeTime);
 
+type Inputs = {
+  emoji_input: string
+}
+
 const CreatePostWizard = () => {
-  const [input, setInput] = useState("");
-
   const { user } = useUser()
-
   const ctx = api.useContext()
+
+
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<Inputs>({
+    resolver: zodResolver(
+      z.object({
+        emoji_input: z.string()
+          .emoji("Only emojis are allowed")
+          .min(1)
+          .max(255),
+      }))
+  })
+
+  const onSubmit: SubmitHandler<Inputs> = (data) => {
+    if (errors.emoji_input) {
+      console.log(errors.emoji_input)
+    }
+    mutate({ content: data.emoji_input });
+  };
+
+  const watchedEmojiInput = watch('emoji_input', '');
 
   const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
     onSuccess: () => {
-      setInput("")
       void ctx.posts.getAll.invalidate()
+    },
+    onError: (e) => {
+      const message = e.data?.zodError?.fieldErrors.content;
+      if (message && message[0]) {
+        toast.error(message[0]);
+      } else {
+        toast.error("Something went wrong, please try again later!")
+      }
     }
   });
 
+  console.log(watchedEmojiInput)
   if (!user) return null
 
   return (
@@ -35,16 +68,30 @@ const CreatePostWizard = () => {
         width={48}
         height={48}
       />
-      <input
-        placeholder="Type some emojis!"
-        className="bg-transparent grow outline-none"
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        disabled={isPosting}
-      />
-      <button onClick={() => mutate({ content: input })}>
-        Post
-      </button>
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full flex gap-3">
+        <input
+          {...register("emoji_input", { required: true })}
+          placeholder="Type some emojis!"
+          className="bg-transparent grow outline-none w-full"
+          disabled={isPosting}
+        />
+        {(errors.emoji_input && watchedEmojiInput.length > 0) && <p>{errors.emoji_input.message}</p>}
+        <div className="flex items-center gap-2">
+          {
+            (watchedEmojiInput.length > 0 && !isPosting) && (
+              <div>
+                <button type="submit" disabled={isPosting}>
+                  Post
+                </button>
+              </div>
+            )
+          }
+          <div>
+            {isPosting && <LoadingSpinner />}
+          </div>
+        </div>
+      </form>
     </div>
   )
 
