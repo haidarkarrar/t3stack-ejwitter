@@ -10,7 +10,7 @@ import { toast } from "react-hot-toast";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from "react";
+import Link from "next/link";
 
 dayjs.extend(relativeTime);
 
@@ -23,7 +23,7 @@ const CreatePostWizard = () => {
   const ctx = api.useContext()
 
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<Inputs>({
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm<Inputs>({
     resolver: zodResolver(
       z.object({
         emoji_input: z.string()
@@ -45,6 +45,7 @@ const CreatePostWizard = () => {
   const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
     onSuccess: () => {
       void ctx.posts.getAll.invalidate()
+      reset({ emoji_input: '' })
     },
     onError: (e) => {
       const message = e.data?.zodError?.fieldErrors.content;
@@ -114,16 +115,20 @@ const PostView = (props: PostWithUser) => {
       <div className="flex flex-col w-11/12">
         <div className="font-bold flex gap-2">
           <div>
-            <span>
-              {`@${author.username}`}
-            </span>
+            <Link href={`/@${author.username}`}>
+              <span>
+                {`@${author.username}`}
+              </span>
+            </Link>
           </div>
           <div>
             <span>·</span>
           </div>
-          <div className="font-thin">
-            <span>{dayjs(post.createdAt).fromNow()}</span>
-          </div>
+          <Link href={`/post/${post.id}`}>
+            <div className="font-thin">
+              <span>{dayjs(post.createdAt).fromNow()}</span>
+            </div>
+          </Link>
         </div>
         <div className="text-2xl">{post.content}</div>
       </div>
