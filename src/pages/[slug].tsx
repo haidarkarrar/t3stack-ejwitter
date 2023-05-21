@@ -7,7 +7,29 @@ import { appRouter } from "~/server/api/root";
 import { createServerSideHelpers } from "@trpc/react-query/server";
 import { Layout } from "~/components/layout";
 import Image from "next/image";
+import { Loading } from "~/components/loading";
+import { PostView } from "~/components/postview";
 
+
+const ProfileFeed = ({ userId }: { userId: string }) => {
+    const { data, isLoading } = api.posts.getPostsbyUserId.useQuery({
+        userId: userId
+    })
+
+    console.log(data)
+    if (isLoading) return <Loading />
+    if(!data || data.length === 0) return <div>User has not posted anything yet</div>
+
+    return (
+        <div>
+            {
+                data.map((post) => (
+                    <PostView author={post.author} post={post.post} key={post.post.id}/>
+                ))
+            }
+        </div>
+    )
+}
 
 const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
     const { data } = api.profile.getUserByUsername.useQuery({
@@ -36,6 +58,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
                     {`@${data.username ?? ""}`}
                 </div>
                 <div className="border-b border-slate-400 w-full"></div>
+                <ProfileFeed userId={data.id} />
             </Layout>
         </>
     );
